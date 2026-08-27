@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.2
+
+- add Czech and English labels and descriptions for the visual Home Assistant
+  configuration editor, including the multi-camera list and its fields.
+
 ## 0.2.1
 
 - rename the add-on to **Gigaset elements camera local gateway** while keeping

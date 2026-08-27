@@ -1,0 +1,53 @@
+configuration:
+  cameras:
+    name: Kamery
+    description: Seznam kamer obsluhovaných touto lokální bránou.
+    fields:
+      name:
+        name: Název
+        description: Název kamery zobrazovaný v Home Assistantu.
+      ip:
+        name: IP adresa
+        description: IP adresa kamery v místní síti.
+      mac:
+        name: MAC adresa
+        description: MAC adresa kamery, například 7C:2F:80:90:2C:01.
+      user:
+        name: Uživatel
+        description: Uživatelské jméno webového rozhraní kamery.
+      password:
+        name: Heslo
+        description: Heslo webového rozhraní kamery.
+      token:
+        name: Přístupový token
+        description: Volitelný token pro zabezpečení proxy snímku a streamu této kamery.
+  camera_ip:
+    name: IP adresa původní kamery
+    description: Starší nastavení jedné kamery, zachované kvůli kompatibilitě.
+  camera_mac:
+    name: MAC adresa původní kamery
+    description: Starší nastavení jedné kamery, zachované kvůli kompatibilitě.
+  camera_name:
+    name: Název původní kamery
+    description: Starší nastavení jedné kamery, zachované kvůli kompatibilitě.
+  camera_user:
+    name: Uživatel původní kamery
+    description: Starší nastavení jedné kamery, zachované kvůli kompatibilitě.
+  camera_password:
+    name: Heslo původní kamery
+    description: Starší nastavení jedné kamery, zachované kvůli kompatibilitě.
+  http_token:
+    name: Přístupový token původní kamery
+    description: Starší nastavení jedné kamery, zachované kvůli kompatibilitě.
+  motion_hold:
+    name: Doba přidržení pohybu
+    description: Počet sekund, po které zůstane detekce pohybu aktivní po poslední události.
+  snapshot_interval:
+    name: Interval snímků
+    description: Interval automatického obnovení snímku v sekundách.
+  telemetry_interval:
+    name: Interval telemetrie
+    description: Interval načítání diagnostických údajů kamery v sekundách.
+  mqtt_topic:
+    name: Základní MQTT téma
+    description: Společný prefix MQTT témat publikovaných bránou.
