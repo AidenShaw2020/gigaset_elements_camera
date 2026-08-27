@@ -1,0 +1,23 @@
+# Generated payloads and camera data
+*.bin
+*.mfw
+*.mef
+*.img
+*.dump
+*.tar
+*.pcap
+*.pem
+*.key
+
+# Python and local environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Local logs and editor metadata
+*.log
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
