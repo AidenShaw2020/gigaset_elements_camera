@@ -215,8 +215,8 @@ def discovery_messages(
         device["configuration_url"] = configuration_url
     available = _availability(base, bridge_availability)
     origin = {
-        "name": "Gigaset Camera MQTT",
-        "sw_version": "0.2.0",
+        "name": "Gigaset elements camera local gateway",
+        "sw_version": "0.2.1",
         "support_url": "https://github.com/AidenShaw2020/gigaset_elements_camera",
     }
 

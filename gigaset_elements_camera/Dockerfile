@@ -11,6 +11,6 @@ COPY rootfs /
 RUN chmod 0755 /etc/services.d/gigaset-camera-mqtt/run
 
 LABEL \
-    org.opencontainers.image.title="Home Assistant Add-on: Gigaset Camera MQTT" \
+    org.opencontainers.image.title="Home Assistant Add-on: Gigaset elements camera local gateway" \
     org.opencontainers.image.description="Optional local MQTT bridge for Gigaset/Y-cam Gen1 cameras" \
     org.opencontainers.image.licenses="MIT"

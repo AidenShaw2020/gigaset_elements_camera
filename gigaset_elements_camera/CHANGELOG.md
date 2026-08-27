@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+
+- rename the add-on to **Gigaset elements camera local gateway** while keeping
+  its existing slug and user configuration.
+
 ## 0.2.0
 
 - support multiple cameras in one add-on instance;

@@ -1,4 +1,4 @@
-# Gigaset Camera MQTT add-on
+# Gigaset elements camera local gateway
 
 Optional, fully local Home Assistant bridge for discontinued Gigaset and Y-cam
 Gen1 cameras. One add-on instance supports multiple cameras and provides MQTT

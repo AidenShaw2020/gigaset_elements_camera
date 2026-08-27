@@ -202,7 +202,7 @@ https://github.com/AidenShaw2020/gigaset_elements_camera
 ```
 
 Home Assistant discovers the add-on directly in the root-level
-`gigaset_elements_camera` directory. Install **Gigaset Camera MQTT** from the
+`gigaset_elements_camera` directory. Install **Gigaset elements camera local gateway** from the
 store. One add-on instance supports a list of cameras and publishes Home
 Assistant MQTT discovery for availability, motion, refreshable JPEG snapshots
 and diagnostic telemetry. It also exposes authenticated per-camera snapshot
