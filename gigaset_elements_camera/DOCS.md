@@ -1,4 +1,4 @@
-# Gigaset Camera MQTT
+# Gigaset elements camera local gateway
 
 This optional add-on connects one or more Gigaset/Y-cam Gen1 cameras to Home Assistant.
 The camera continues to work locally when the add-on is stopped or removed.

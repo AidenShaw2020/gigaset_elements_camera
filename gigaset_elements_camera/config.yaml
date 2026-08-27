@@ -1,5 +1,5 @@
-name: Gigaset Camera MQTT
-version: "0.2.0"
+name: Gigaset elements camera local gateway
+version: "0.2.1"
 slug: gigaset_camera_mqtt
 description: Multi-camera MQTT, telemetry, snapshot and MJPEG bridge for Gigaset/Y-cam Gen1
 arch:
