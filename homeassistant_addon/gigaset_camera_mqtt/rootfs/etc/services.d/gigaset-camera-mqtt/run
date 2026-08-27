@@ -1,0 +1,30 @@
+#!/usr/bin/with-contenv bashio
+set -e
+
+export CAMERA_IP="$(bashio::config 'camera_ip')"
+export CAMERA_MAC="$(bashio::config 'camera_mac')"
+export CAMERA_NAME="$(bashio::config 'camera_name')"
+export CAMERA_USER="$(bashio::config 'camera_user')"
+export CAMERA_PASSWORD="$(bashio::config 'camera_password')"
+export HTTP_TOKEN="$(bashio::config 'http_token')"
+export MOTION_HOLD="$(bashio::config 'motion_hold')"
+export SNAPSHOT_INTERVAL="$(bashio::config 'snapshot_interval')"
+export MQTT_TOPIC="$(bashio::config 'mqtt_topic')"
+export HTTP_LISTEN="0.0.0.0"
+export HTTP_PORT="8766"
+
+export MQTT_BROKER="$(bashio::services mqtt 'host')"
+export MQTT_PORT="$(bashio::services mqtt 'port')"
+export MQTT_USER="$(bashio::services mqtt 'username')"
+export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
+
+if bashio::var.is_empty "${CAMERA_IP}" || bashio::var.is_empty "${CAMERA_MAC}"; then
+    bashio::exit.nok "Set both camera_ip and camera_mac in the add-on configuration."
+fi
+
+if bashio::var.is_empty "${HTTP_TOKEN}"; then
+    bashio::log.warning "http_token is empty; any device on the local network can trigger motion."
+fi
+
+bashio::log.info "Starting the optional local bridge for ${CAMERA_NAME} at ${CAMERA_IP}."
+exec /opt/gigaset-venv/bin/python /opt/gigaset-camera/mqtt_bridge.py

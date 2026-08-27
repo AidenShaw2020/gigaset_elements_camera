@@ -1,0 +1,40 @@
+name: Gigaset Camera MQTT
+version: "0.1.0"
+slug: gigaset_camera_mqtt
+description: Optional local MQTT bridge for Gigaset/Y-cam Gen1 cameras
+arch:
+  - aarch64
+  - amd64
+  - armhf
+  - armv7
+  - i386
+startup: services
+boot: auto
+init: false
+services:
+  - mqtt:need
+ports:
+  8766/tcp: 8766
+ports_description:
+  8766/tcp: Camera motion event receiver
+watchdog: "http://[HOST]:[PORT:8766]/health"
+options:
+  camera_ip: ""
+  camera_mac: ""
+  camera_name: Gigaset Camera
+  camera_user: admin
+  camera_password: ""
+  http_token: ""
+  motion_hold: 15
+  snapshot_interval: 10
+  mqtt_topic: gigaset/camera
+schema:
+  camera_ip: str
+  camera_mac: str
+  camera_name: str
+  camera_user: str
+  camera_password: password?
+  http_token: password?
+  motion_hold: float(1,600)
+  snapshot_interval: float(1,3600)
+  mqtt_topic: str
