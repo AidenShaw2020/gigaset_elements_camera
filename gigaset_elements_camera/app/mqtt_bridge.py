@@ -216,7 +216,7 @@ def discovery_messages(
     available = _availability(base, bridge_availability)
     origin = {
         "name": "Gigaset elements camera local gateway",
-        "sw_version": "0.2.1",
+        "sw_version": "0.3.0",
         "support_url": "https://github.com/AidenShaw2020/gigaset_elements_camera",
     }
 
@@ -564,6 +564,151 @@ def make_handler(registry: Registry):
     return Handler
 
 
+CAMERA_EDITOR_HTML = """<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gigaset elements camera local gateway</title>
+  <style>
+    :root{color-scheme:light dark;--bg:#f5f5f5;--card:#fff;--text:#202124;
+      --muted:#687078;--line:#d7dadd;--primary:#03a9f4;--danger:#d32f2f}
+    @media(prefers-color-scheme:dark){:root{--bg:#111;--card:#1c1c1c;--text:#eee;
+      --muted:#aeb4b9;--line:#45484b}}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);
+      font:15px system-ui,-apple-system,"Segoe UI",sans-serif}
+    main{max-width:920px;margin:0 auto;padding:24px 18px 48px}
+    h1{font-size:24px;margin:0 0 6px}.intro{color:var(--muted);margin:0 0 22px}
+    #list{display:grid;gap:16px}.camera{background:var(--card);border:1px solid var(--line);
+      border-radius:12px;padding:18px;box-shadow:0 1px 3px #0002}
+    .camera-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+    .camera-title{font-size:18px;font-weight:600}.grid{display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    label{display:grid;gap:6px;color:var(--muted);font-size:13px}
+    input{width:100%;border:1px solid var(--line);border-radius:7px;padding:10px 11px;
+      background:transparent;color:var(--text);font:inherit}
+    input:focus{outline:2px solid color-mix(in srgb,var(--primary) 45%,transparent);
+      border-color:var(--primary)}
+    .actions{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
+    button{border:0;border-radius:20px;padding:10px 17px;font:600 14px inherit;cursor:pointer}
+    .add,.save{background:var(--primary);color:#fff}.remove{background:transparent;
+      color:var(--danger);border:1px solid color-mix(in srgb,var(--danger) 55%,transparent)}
+    .save{margin-left:auto}.status{color:var(--muted)}.empty{background:var(--card);
+      border:1px dashed var(--line);border-radius:12px;padding:28px;text-align:center;
+      color:var(--muted)}
+    @media(max-width:650px){.grid{grid-template-columns:1fr}.save{margin-left:0}}
+  </style>
+</head>
+<body><main>
+  <h1>Gigaset elements camera local gateway</h1>
+  <p class="intro">Přidejte kamery, které má tato lokální brána zpřístupnit v Home Assistantu.</p>
+  <div id="list"></div>
+  <div class="actions">
+    <button class="add" id="add" type="button">Přidat kameru</button>
+    <span class="status" id="status"></span>
+    <button class="save" id="save" type="button">Uložit a restartovat bránu</button>
+  </div>
+</main>
+<script>
+const list=document.getElementById('list'),status=document.getElementById('status');
+const endpoint=location.pathname.replace(/[/]?$/, '/')+'api/cameras';
+let cameras=[];
+function esc(value){return String(value??'').replace(/[&<>'"]/g,c=>({'&':'&amp;',
+  '<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function render(){
+  if(!cameras.length){list.innerHTML='<div class="empty">Zatím není přidána žádná kamera.</div>';return;}
+  list.innerHTML=cameras.map((c,i)=>`<section class="camera">
+    <div class="camera-head"><span class="camera-title">${esc(c.name||`Kamera ${i+1}`)}</span>
+      <button class="remove" data-remove="${i}" type="button">Odstranit</button></div>
+    <div class="grid">
+      <label>Název<input data-i="${i}" data-k="name" value="${esc(c.name)}" required></label>
+      <label>IP adresa<input data-i="${i}" data-k="ip" value="${esc(c.ip)}" required></label>
+      <label>MAC adresa<input data-i="${i}" data-k="mac" value="${esc(c.mac)}" placeholder="7C:2F:80:90:2C:01" required></label>
+      <label>Uživatel<input data-i="${i}" data-k="user" value="${esc(c.user||'admin')}" required></label>
+      <label>Heslo<input data-i="${i}" data-k="password" type="password" value="${esc(c.password)}" placeholder="Prázdné = odvodit z MAC"></label>
+      <label>Přístupový token<input data-i="${i}" data-k="token" type="password" value="${esc(c.token)}" placeholder="Doporučeno pro HTTP proxy"></label>
+    </div></section>`).join('');
+}
+list.addEventListener('input',e=>{const t=e.target;if(t.dataset.i!==undefined){
+  cameras[Number(t.dataset.i)][t.dataset.k]=t.value;
+  if(t.dataset.k==='name')t.closest('.camera').querySelector('.camera-title').textContent=t.value||`Kamera ${Number(t.dataset.i)+1}`;
+}});
+list.addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;
+  const i=Number(b.dataset.remove);if(confirm(`Odstranit kameru „${cameras[i].name||i+1}“?`)){cameras.splice(i,1);render();}});
+document.getElementById('add').onclick=()=>{cameras.push({name:`Kamera ${cameras.length+1}`,ip:'',mac:'',user:'admin',password:'',token:''});render();};
+document.getElementById('save').onclick=async()=>{status.textContent='Ukládám…';
+  try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cameras})});
+    const data=await r.json();if(!r.ok)throw new Error(data.error||'Uložení selhalo');
+    cameras=data.cameras;render();status.textContent='Uloženo. Brána se restartuje…';
+  }catch(e){status.textContent=e.message;}}
+fetch(endpoint).then(r=>r.json()).then(data=>{cameras=data.cameras||[];render();})
+  .catch(e=>{status.textContent='Konfiguraci nelze načíst: '+e.message;render();});
+</script></body></html>"""
+
+
+def make_camera_editor_handler(camera_config: str):
+    class Handler(BaseHTTPRequestHandler):
+        server_version = "GigasetCameraEditor/1.0"
+
+        def reply_json(self, status: int, value: object):
+            payload = json.dumps(value, ensure_ascii=False).encode("utf-8")
+            self.send_response(status)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def do_GET(self):
+            path = urllib.parse.urlsplit(self.path).path.rstrip("/")
+            if path.endswith("/api/cameras"):
+                try:
+                    self.reply_json(200, {"cameras": load_camera_mappings(camera_config)})
+                except (OSError, ValueError, json.JSONDecodeError) as error:
+                    self.reply_json(500, {"error": str(error)})
+                return
+            if path.endswith("/favicon.ico"):
+                self.send_response(204)
+                self.end_headers()
+                return
+            payload = CAMERA_EDITOR_HTML.encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Content-Length", str(len(payload)))
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(payload)
+
+        def do_POST(self):
+            path = urllib.parse.urlsplit(self.path).path.rstrip("/")
+            if not path.endswith("/api/cameras"):
+                self.reply_json(404, {"error": "endpoint not found"})
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            if length <= 0 or length > 1024 * 1024:
+                self.reply_json(400, {"error": "invalid request size"})
+                return
+            try:
+                data = json.loads(self.rfile.read(length).decode("utf-8"))
+                cameras = save_camera_mappings(camera_config, data.get("cameras"))
+            except (AttributeError, OSError, ValueError, json.JSONDecodeError) as error:
+                self.reply_json(400, {"error": str(error)})
+                return
+            self.reply_json(200, {"ok": True, "cameras": cameras})
+            threading.Thread(target=self.restart_after_reply, daemon=True).start()
+
+        @staticmethod
+        def restart_after_reply():
+            time.sleep(0.8)
+            os.kill(os.getpid(), signal.SIGTERM)
+
+        def log_message(self, format, *values):
+            print(f"editor {self.address_string()}: {format % values}", flush=True)
+
+    return Handler
+
+
 def env(name: str, fallback=None):
     return os.environ.get(name, fallback)
 
@@ -585,7 +730,58 @@ def camera_from_mapping(value: dict) -> CameraOptions:
     )
 
 
+def normalize_camera_mappings(values: object) -> list[dict[str, str]]:
+    if not isinstance(values, list):
+        raise ValueError("cameras must be a list")
+    if len(values) > 32:
+        raise ValueError("at most 32 cameras can be configured")
+    normalized = []
+    keys = []
+    for value in values:
+        if not isinstance(value, dict):
+            raise ValueError("each camera must be an object")
+        camera = camera_from_mapping(value)
+        keys.append(camera.key)
+        normalized.append(
+            {
+                "name": camera.name,
+                "ip": camera.camera,
+                "mac": camera.mac,
+                "user": camera.camera_user,
+                "password": str(
+                    value.get("password") or value.get("camera_password") or ""
+                ),
+                "token": str(value.get("token") or value.get("http_token") or ""),
+            }
+        )
+    if len(keys) != len(set(keys)):
+        raise ValueError("camera names and MAC addresses must produce unique IDs")
+    return normalized
+
+
+def load_camera_mappings(path: str | None) -> list[dict[str, str]]:
+    if not path or not Path(path).exists():
+        return []
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    values = data.get("cameras", []) if isinstance(data, dict) else data
+    return normalize_camera_mappings(values)
+
+
+def save_camera_mappings(path: str, values: object) -> list[dict[str, str]]:
+    normalized = normalize_camera_mappings(values)
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    temporary = target.with_suffix(target.suffix + ".tmp")
+    temporary.write_text(
+        json.dumps({"cameras": normalized}, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    os.replace(temporary, target)
+    return normalized
+
+
 def load_camera_options(args) -> list[CameraOptions]:
+    data = {}
     if args.config:
         data = json.loads(Path(args.config).read_text(encoding="utf-8"))
         args.motion_hold = float(data.get("motion_hold", args.motion_hold))
@@ -596,13 +792,12 @@ def load_camera_options(args) -> list[CameraOptions]:
             data.get("telemetry_interval", args.telemetry_interval)
         )
         args.topic = str(data.get("mqtt_topic", args.topic))
-        configured = data.get("cameras") or []
-        if configured:
-            cameras = [camera_from_mapping(item) for item in configured]
-        elif data.get("camera_ip") and data.get("camera_mac"):
-            cameras = [camera_from_mapping(data)]
-        else:
-            raise ValueError("configure at least one camera in the cameras list")
+        configured = load_camera_mappings(getattr(args, "camera_config", None))
+        if not configured:
+            configured = data.get("cameras") or []
+        if not configured and data.get("camera_ip") and data.get("camera_mac"):
+            configured = [data]
+        cameras = [camera_from_mapping(item) for item in configured]
     else:
         if not args.camera or not args.mac:
             raise ValueError("--camera and --mac are required without --config")
@@ -625,6 +820,11 @@ def load_camera_options(args) -> list[CameraOptions]:
 def parse_args():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", help="add-on options JSON containing a cameras list")
+    parser.add_argument(
+        "--camera-config",
+        default=env("CAMERA_CONFIG", "cameras.json"),
+        help="JSON file managed by the visual camera editor",
+    )
     parser.add_argument("--camera", default=env("CAMERA_IP"))
     parser.add_argument("--mac", default=env("CAMERA_MAC"))
     parser.add_argument("--name", default=env("CAMERA_NAME", "Gigaset Camera"))
@@ -645,6 +845,9 @@ def parse_args():
     )
     parser.add_argument("--listen", default=env("HTTP_LISTEN", "0.0.0.0"))
     parser.add_argument("--http-port", type=int, default=int(env("HTTP_PORT", "8766")))
+    parser.add_argument(
+        "--ingress-port", type=int, default=int(env("INGRESS_PORT", "8099"))
+    )
     parser.add_argument("--http-token", default=env("HTTP_TOKEN"))
     parser.add_argument(
         "--motion-hold", type=float, default=float(env("MOTION_HOLD", "15"))
@@ -701,14 +904,24 @@ def main():
     client.connect(args.broker, args.mqtt_port, keepalive=60)
     client.loop_start()
     server = ThreadingHTTPServer((args.listen, args.http_port), make_handler(registry))
+    editor = ThreadingHTTPServer(
+        (args.listen, args.ingress_port),
+        make_camera_editor_handler(args.camera_config),
+    )
+    threading.Thread(target=editor.serve_forever, daemon=True).start()
     for camera in cameras:
         camera.start()
 
     def shutdown(_signal=None, _frame=None):
         threading.Thread(target=server.shutdown, daemon=True).start()
+        threading.Thread(target=editor.shutdown, daemon=True).start()
 
     signal.signal(signal.SIGINT, shutdown)
     signal.signal(signal.SIGTERM, shutdown)
+    print(
+        f"Camera configuration editor listening on port {args.ingress_port}",
+        flush=True,
+    )
     for camera in cameras:
         if not camera.options.http_token:
             print(
@@ -738,6 +951,7 @@ def main():
             camera.stop()
         client.publish(bridge_availability, "offline", qos=1, retain=True)
         server.server_close()
+        editor.server_close()
         client.disconnect()
         client.loop_stop()
 

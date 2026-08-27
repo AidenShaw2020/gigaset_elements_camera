@@ -5,12 +5,16 @@ import unittest
 from pathlib import Path
 
 from mqtt_bridge import (
+    CAMERA_EDITOR_HTML,
     discovery_messages,
+    load_camera_mappings,
     load_camera_options,
+    normalize_camera_mappings,
     parse_duration,
     parse_stream_info,
     parse_system_info,
     slugify,
+    save_camera_mappings,
 )
 
 
@@ -92,6 +96,34 @@ class MqttBridgeTests(unittest.TestCase):
         self.assertEqual(len(cameras), 2)
         self.assertNotEqual(cameras[0].key, cameras[1].key)
         self.assertEqual(args.snapshot_interval, 5)
+
+    def test_visual_editor_camera_storage(self):
+        values = [
+            {
+                "name": "Front door",
+                "ip": "192.0.2.10",
+                "mac": "020000000001",
+                "user": "admin",
+                "password": "",
+                "token": "local-token",
+            }
+        ]
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "cameras.json"
+            stored = save_camera_mappings(str(path), values)
+            loaded = load_camera_mappings(str(path))
+        self.assertEqual(stored, loaded)
+        self.assertEqual(loaded[0]["mac"], "02:00:00:00:00:01")
+        self.assertEqual(loaded[0]["password"], "")
+        self.assertIn("Přidat kameru", CAMERA_EDITOR_HTML)
+
+    def test_visual_editor_rejects_duplicate_camera_ids(self):
+        values = [
+            {"name": "Camera", "ip": "192.0.2.10", "mac": "02:00:00:00:00:01"},
+            {"name": "Camera", "ip": "192.0.2.11", "mac": "02:00:00:00:00:01"},
+        ]
+        with self.assertRaisesRegex(ValueError, "unique IDs"):
+            normalize_camera_mappings(values)
 
 
 if __name__ == "__main__":
