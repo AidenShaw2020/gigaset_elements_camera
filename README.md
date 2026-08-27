@@ -5,6 +5,13 @@
 Open tooling for keeping discontinued Gigaset/Y-cam Gen1 cameras useful on a
 local network after the vendor cloud shutdown.
 
+## Related project
+
+Looking for the Gigaset elements **base station and sensors** rather than the
+Gen1 camera? See [Gigaset Elements Emulator](https://github.com/AidenShaw2020/gigaset_elements_emulator),
+a self-hosted replacement for the discontinued Gigaset elements cloud with
+MQTT and Home Assistant integration.
+
 The repository intentionally contains **no vendor firmware, flash dump,
 certificate, serial number, MAC address or device configuration**. Each user
 reads their own camera, builds a device-specific patched image locally, and
