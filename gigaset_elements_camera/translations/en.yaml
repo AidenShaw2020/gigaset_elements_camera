@@ -1,0 +1,53 @@
+configuration:
+  cameras:
+    name: Cameras
+    description: Cameras managed by this local gateway.
+    fields:
+      name:
+        name: Name
+        description: Camera name shown in Home Assistant.
+      ip:
+        name: IP address
+        description: Camera IP address on the local network.
+      mac:
+        name: MAC address
+        description: Camera MAC address, for example 7C:2F:80:90:2C:01.
+      user:
+        name: Username
+        description: Username for the camera web interface.
+      password:
+        name: Password
+        description: Password for the camera web interface.
+      token:
+        name: Access token
+        description: Optional token protecting this camera's snapshot and stream proxy.
+  camera_ip:
+    name: Legacy camera IP address
+    description: Legacy single-camera setting retained for compatibility.
+  camera_mac:
+    name: Legacy camera MAC address
+    description: Legacy single-camera setting retained for compatibility.
+  camera_name:
+    name: Legacy camera name
+    description: Legacy single-camera setting retained for compatibility.
+  camera_user:
+    name: Legacy camera username
+    description: Legacy single-camera setting retained for compatibility.
+  camera_password:
+    name: Legacy camera password
+    description: Legacy single-camera setting retained for compatibility.
+  http_token:
+    name: Legacy camera access token
+    description: Legacy single-camera setting retained for compatibility.
+  motion_hold:
+    name: Motion hold time
+    description: Seconds to keep motion active after the last event.
+  snapshot_interval:
+    name: Snapshot interval
+    description: Automatic snapshot refresh interval in seconds.
+  telemetry_interval:
+    name: Telemetry interval
+    description: Camera diagnostic polling interval in seconds.
+  mqtt_topic:
+    name: MQTT base topic
+    description: Common prefix for MQTT topics published by the gateway.
