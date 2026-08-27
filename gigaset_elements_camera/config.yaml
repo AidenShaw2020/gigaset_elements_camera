@@ -1,5 +1,5 @@
 name: Gigaset elements camera local gateway
-version: "0.2.2"
+version: "0.3.0"
 slug: gigaset_camera_mqtt
 description: Multi-camera MQTT, telemetry, snapshot and MJPEG bridge for Gigaset/Y-cam Gen1
 arch:
@@ -11,6 +11,10 @@ arch:
 startup: services
 boot: auto
 init: false
+ingress: true
+ingress_port: 8099
+panel_icon: mdi:cctv
+panel_title: Gigaset cameras
 services:
   - mqtt:need
 ports:
@@ -19,31 +23,11 @@ ports_description:
   8766/tcp: Motion receiver and authenticated snapshot/MJPEG proxy
 watchdog: "http://[HOST]:[PORT:8766]/health"
 options:
-  cameras: []
-  camera_ip: ""
-  camera_mac: ""
-  camera_name: Gigaset Camera
-  camera_user: admin
-  camera_password: ""
-  http_token: ""
   motion_hold: 15
   snapshot_interval: 10
   telemetry_interval: 60
   mqtt_topic: gigaset/camera
 schema:
-  cameras:
-    - name: str
-      ip: str
-      mac: str
-      user: str
-      password: password?
-      token: password?
-  camera_ip: str
-  camera_mac: str
-  camera_name: str
-  camera_user: str
-  camera_password: password?
-  http_token: password?
   motion_hold: float(1,600)
   snapshot_interval: float(1,3600)
   telemetry_interval: float(10,3600)

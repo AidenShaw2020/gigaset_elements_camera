@@ -3,12 +3,28 @@ set -e
 
 export HTTP_LISTEN="0.0.0.0"
 export HTTP_PORT="8766"
+export INGRESS_PORT="8099"
 
 export MQTT_BROKER="$(bashio::services mqtt 'host')"
 export MQTT_PORT="$(bashio::services mqtt 'port')"
 export MQTT_USER="$(bashio::services mqtt 'username')"
 export MQTT_PASSWORD="$(bashio::services mqtt 'password')"
 
+/opt/gigaset-venv/bin/python /opt/gigaset-camera/migrate_camera_config.py \
+    /data/options.json /data/cameras.json
+
+# Camera entries used to live in Supervisor options. They are now managed by
+# the authenticated Ingress editor and persisted in /data/cameras.json.
+options="$(bashio::addon.options)"
+for old_key in cameras camera_ip camera_mac camera_name camera_user camera_password http_token; do
+    if bashio::jq.exists "${options}" ".${old_key}"; then
+        bashio::log.info "Removing migrated option: ${old_key}"
+        bashio::addon.option "${old_key}"
+    fi
+done
+
 bashio::log.info "Starting the optional multi-camera local bridge."
 exec /opt/gigaset-venv/bin/python /opt/gigaset-camera/mqtt_bridge.py \
-    --config /data/options.json
+    --config /data/options.json \
+    --camera-config /data/cameras.json \
+    --ingress-port 8099

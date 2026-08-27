@@ -6,39 +6,31 @@ No cloud service is contacted.
 
 ## Configuration
 
-Configure cameras as a list. Each camera becomes a separate Home Assistant
-device:
+Open the add-on and select **Open Web UI**. The visual camera editor provides
+an **Add camera** button and cards for editing or removing every camera. Saving
+restarts the gateway automatically. Each camera becomes a separate Home
+Assistant device.
+
+Camera entries are stored in the add-on data directory. No YAML editing is
+required. An existing single-camera or `cameras` configuration is migrated
+automatically when upgrading from version 0.2.x.
+
+The remaining shared settings stay on the add-on **Configuration** tab:
 
 ```yaml
-cameras:
-  - name: Front door
-    ip: 192.0.2.10
-    mac: 02:00:00:00:00:01
-    user: admin
-    password: ""
-    token: change-this-front-door-token
-  - name: Garage
-    ip: 192.0.2.11
-    mac: 02:00:00:00:00:02
-    user: admin
-    password: ""
-    token: change-this-garage-token
 motion_hold: 15
 snapshot_interval: 10
 telemetry_interval: 60
 mqtt_topic: gigaset/camera
 ```
 
-- `password`: leave empty to derive the stock password locally from the MAC;
-  enter the changed web password otherwise.
-- `token`: separate secret expected on this camera's motion and proxy URLs.
+- In the camera editor, leave `password` empty to derive the stock password
+  locally from the MAC; enter the changed web password otherwise.
+- `token` is a separate secret expected on that camera's motion and proxy URLs.
 - `motion_hold`: seconds for which the motion entity remains on.
 - `snapshot_interval`: seconds between JPEG snapshot updates.
 - `telemetry_interval`: seconds between system/stream information updates.
 - `mqtt_topic`: common MQTT topic root; camera-specific suffixes are automatic.
-
-The old single-camera keys remain supported for upgrades, but new installations
-should use `cameras`.
 
 The add-on obtains MQTT host, port and credentials from Home Assistant's MQTT
 service automatically. Port `8766` is exposed only so the camera can report a

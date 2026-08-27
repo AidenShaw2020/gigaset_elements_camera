@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- replace the raw Home Assistant camera-list control with an authenticated
+  visual editor using camera cards and an explicit **Add camera** button;
+- migrate existing multi-camera and legacy single-camera settings automatically;
+- remove the old single-camera fields from the regular Configuration tab.
+
 ## 0.2.2
 
 - add Czech and English labels and descriptions for the visual Home Assistant
