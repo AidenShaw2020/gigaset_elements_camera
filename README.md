@@ -195,10 +195,20 @@ used.
 
 ## Optional Home Assistant MQTT add-on
 
-Copy `homeassistant_addon/gigaset_camera_mqtt` to `/addons`, reload the local
-add-on store, and install **Gigaset Camera MQTT**. It publishes Home Assistant
-MQTT discovery, availability, motion and JPEG snapshots. The camera continues
-to work normally if the add-on is absent or stopped.
+Add this repository URL to the Home Assistant add-on store:
+
+```text
+https://github.com/AidenShaw2020/gigaset_elements_camera
+```
+
+Home Assistant discovers the add-on directly in the root-level
+`gigaset_elements_camera` directory. Install **Gigaset Camera MQTT** from the
+store. It publishes Home Assistant MQTT discovery, availability, motion and
+JPEG snapshots. The camera continues to work normally if the add-on is absent
+or stopped.
+
+For a manual local installation, copy `gigaset_elements_camera` to `/addons`
+and reload the local add-on store.
 
 Configure a camera HTTP-event slot for the Home Assistant host, port `8766`,
 authorization **No**, and path `motion?token=YOUR_TOKEN`.

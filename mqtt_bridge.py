@@ -5,7 +5,9 @@ from pathlib import Path
 import runpy
 
 
-_implementation = Path(__file__).parent / "homeassistant_addon" / "gigaset_camera_mqtt" / "app" / "mqtt_bridge.py"
+_implementation = (
+    Path(__file__).parent / "gigaset_elements_camera" / "app" / "mqtt_bridge.py"
+)
 _namespace = runpy.run_path(str(_implementation))
 for _name, _value in _namespace.items():
     if not _name.startswith("__"):
