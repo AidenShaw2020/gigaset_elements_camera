@@ -126,4 +126,6 @@ a self-hosted replacement for the discontinued cloud with MQTT and Home
 Assistant integration.
 
 Licensed under the MIT License. This community project is independent and is
-not affiliated with or endorsed by Gigaset or Y-cam.
+not affiliated with or endorsed by Gigaset or Y-cam. Product names are used
+only to identify compatible hardware; see the full
+[trademark and affiliation notice](NOTICE.md).
