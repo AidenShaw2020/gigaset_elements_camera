@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bridge one or more Gigaset Gen1 cameras to Home Assistant over MQTT."""
+"""Bridge Gigaset Gen1 and Ambarella S2L cameras to Home Assistant."""
 
 from __future__ import annotations
 
@@ -8,11 +8,13 @@ import base64
 import dataclasses
 import datetime as dt
 import hmac
+import hashlib
 import html
 import json
 import os
 import re
 import signal
+import subprocess
 import threading
 import time
 import urllib.error
@@ -39,6 +41,52 @@ def derive_admin_password(mac: str) -> str:
     value = normalize_mac(mac)
     material = "LUCKOTVF" + value[::-1] + "YCAMVF"
     return base64.b64encode(material.encode("ascii")).decode("ascii")
+
+
+S2L_PASSWORD_ALPHABET = (
+    "zAyB1xCwD4vEuF3tGsH4rIqJ5pKoL6nMmN7lOkP8jQiR9hSgT0fUeVdWcXbYaZ"
+)
+
+
+def derive_s2l_password(mac: str) -> str:
+    """Derive the newer camera's stock admin/root password from its MAC."""
+
+    key = normalize_mac(mac)
+    digest = hashlib.sha1(key.encode("ascii")).digest()
+    mixed = [
+        digest[0] + 8 * digest[12],
+        digest[1] + 8 * digest[11],
+        digest[2] + 8 * digest[10],
+        digest[3] + 8 * digest[9],
+        digest[4] + 8 * digest[8],
+        digest[5] + 8 * digest[7],
+        9 * digest[6],
+        8 * digest[5] + 65 * digest[7],
+        8 * digest[4] + 65 * digest[8],
+        8 * digest[3] + 65 * digest[9],
+        8 * digest[2] + 65 * digest[10],
+        8 * digest[1] + 65 * digest[11],
+    ]
+    return "".join(
+        S2L_PASSWORD_ALPHABET[(value & 0xFF) % 62] for value in mixed
+    )
+
+
+def normalize_camera_model(value: str) -> str:
+    aliases = {
+        "": "gen1",
+        "gen1": "gen1",
+        "legacy": "gen1",
+        "gm8126": "gen1",
+        "s2l": "ambarella_s2l",
+        "s2lm": "ambarella_s2l",
+        "ambarella": "ambarella_s2l",
+        "ambarella_s2l": "ambarella_s2l",
+    }
+    model = aliases.get(value.strip().lower())
+    if not model:
+        raise ValueError("camera type must be 'gen1' or 'ambarella_s2l'")
+    return model
 
 
 def parse_duration(value: str) -> int | None:
@@ -161,6 +209,8 @@ class CameraOptions:
     camera: str
     mac: str
     name: str = "Gigaset Camera"
+    model: str = "gen1"
+    stream: str = "video0"
     camera_user: str = "admin"
     camera_password: str = ""
     http_token: str = ""
@@ -172,11 +222,35 @@ class CameraOptions:
             raise ValueError("camera IP address or hostname cannot be empty")
         if not self.name:
             raise ValueError("camera name cannot be empty")
+        self.model = normalize_camera_model(self.model)
+        self.stream = self.stream.strip().lstrip("/") or "video0"
+        if not re.fullmatch(r"[A-Za-z0-9_.-]+", self.stream):
+            raise ValueError("stream must be a simple RTSP path such as video0")
         compact = normalize_mac(self.mac)
         self.mac = ":".join(
             compact[index : index + 2] for index in range(0, 12, 2)
         )
-        self.camera_password = self.camera_password or derive_admin_password(self.mac)
+        if not self.camera_password:
+            if self.model == "ambarella_s2l":
+                self.camera_password = derive_s2l_password(self.mac)
+            else:
+                self.camera_password = derive_admin_password(self.mac)
+
+    @property
+    def model_name(self) -> str:
+        if self.model == "ambarella_s2l":
+            return "Ambarella S2L Camera"
+        return "Gen1 Camera"
+
+    @property
+    def is_s2l(self) -> bool:
+        return self.model == "ambarella_s2l"
+
+    @property
+    def rtsp_url(self) -> str:
+        user = urllib.parse.quote(self.camera_user, safe="")
+        password = urllib.parse.quote(self.camera_password, safe="")
+        return f"rtsp://{user}:{password}@{self.camera}/{self.stream}"
 
     @property
     def key(self) -> str:
@@ -204,11 +278,12 @@ def discovery_messages(
     name: str,
     bridge_availability: str = "gigaset/bridge/availability",
     configuration_url: str | None = None,
+    model: str = "Gen1 Camera",
 ):
     device = {
         "identifiers": [uid],
         "manufacturer": "Gigaset",
-        "model": "Gen1 Camera",
+        "model": model,
         "name": name,
     }
     if configuration_url:
@@ -216,7 +291,7 @@ def discovery_messages(
     available = _availability(base, bridge_availability)
     origin = {
         "name": "Gigaset elements camera local gateway",
-        "sw_version": "0.3.0",
+        "sw_version": "0.4.0",
         "support_url": "https://github.com/AidenShaw2020/gigaset_elements_camera",
     }
 
@@ -342,7 +417,8 @@ class CameraBridge:
             self.options.uid,
             self.options.name,
             self.bridge_availability,
-            self.camera_url("/en/main.asp"),
+            self.camera_url("/" if self.options.is_s2l else "/en/main.asp"),
+            self.options.model_name,
         ):
             self.client.publish(topic, json.dumps(payload), qos=1, retain=True)
         self.client.publish(self.base + "/motion", "OFF", qos=1, retain=True)
@@ -412,8 +488,22 @@ class CameraBridge:
     def publish_telemetry(self):
         started = time.monotonic()
         try:
-            values = parse_system_info(self.fetch_text("/en/sysinfo.asp"))
-            values.update(parse_stream_info(self.fetch_text("/en/stream.asp")))
+            if self.options.is_s2l:
+                # The S2L web UI does not expose the legacy ASP telemetry
+                # tables.  Snapshot reachability still gives a reliable local
+                # availability check; richer Oryx telemetry will be added once
+                # its stable CGI query surface is hardware-verified.
+                with self.request("/snapshot.jpg") as response:
+                    response.read(2)
+                values = {
+                    "model": self.options.model_name,
+                    "ip_address": self.options.camera,
+                    "stream": self.options.stream,
+                    "stream_protocol": "RTSP",
+                }
+            else:
+                values = parse_system_info(self.fetch_text("/en/sysinfo.asp"))
+                values.update(parse_stream_info(self.fetch_text("/en/stream.asp")))
             values["response_time_ms"] = round((time.monotonic() - started) * 1000)
             values["updated_at"] = dt.datetime.now(dt.timezone.utc).isoformat()
             self.client.publish(
@@ -493,6 +583,9 @@ def make_handler(registry: Registry):
                 self.reply_json(502, {"ok": False, "error": str(error)})
 
         def send_stream(self, camera: CameraBridge):
+            if camera.options.is_s2l:
+                self.send_s2l_stream(camera)
+                return
             try:
                 with camera.request("/stream.jpg", timeout=30) as upstream:
                     self.send_response(200)
@@ -517,6 +610,70 @@ def make_handler(registry: Registry):
                 print(
                     f"[{camera.options.name}] stream proxy error: {error}", flush=True
                 )
+
+        def send_s2l_stream(self, camera: CameraBridge):
+            process = None
+            try:
+                process = subprocess.Popen(
+                    [
+                        "ffmpeg",
+                        "-hide_banner",
+                        "-loglevel",
+                        "error",
+                        "-rtsp_transport",
+                        "tcp",
+                        "-i",
+                        camera.options.rtsp_url,
+                        "-map",
+                        "0:v:0",
+                        "-an",
+                        "-vf",
+                        "fps=10",
+                        "-q:v",
+                        "5",
+                        "-f",
+                        "mpjpeg",
+                        "pipe:1",
+                    ],
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    # Never copy FFmpeg's RTSP error line to the add-on log:
+                    # it may contain the credential-bearing input URL.
+                    stderr=subprocess.DEVNULL,
+                )
+                self.send_response(200)
+                self.send_header(
+                    "Content-Type", "multipart/x-mixed-replace;boundary=ffmpeg"
+                )
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                assert process.stdout is not None
+                while True:
+                    chunk = process.stdout.read(65536)
+                    if not chunk:
+                        break
+                    self.wfile.write(chunk)
+                    self.wfile.flush()
+                return_code = process.poll()
+                if return_code not in (None, 0):
+                    print(
+                        f"[{camera.options.name}] ffmpeg exited {return_code}; "
+                        "verify the camera password and RTSP profile",
+                        flush=True,
+                    )
+            except (BrokenPipeError, ConnectionResetError):
+                pass
+            except (OSError, subprocess.SubprocessError) as error:
+                print(
+                    f"[{camera.options.name}] RTSP proxy error: {error}", flush=True
+                )
+            finally:
+                if process is not None and process.poll() is None:
+                    process.terminate()
+                    try:
+                        process.wait(timeout=3)
+                    except subprocess.TimeoutExpired:
+                        process.kill()
 
         def dispatch(self):
             path = urllib.parse.urlsplit(self.path).path
@@ -585,9 +742,9 @@ CAMERA_EDITOR_HTML = """<!doctype html>
     .camera-title{font-size:18px;font-weight:600}.grid{display:grid;
       grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
     label{display:grid;gap:6px;color:var(--muted);font-size:13px}
-    input{width:100%;border:1px solid var(--line);border-radius:7px;padding:10px 11px;
+    input,select{width:100%;border:1px solid var(--line);border-radius:7px;padding:10px 11px;
       background:transparent;color:var(--text);font:inherit}
-    input:focus{outline:2px solid color-mix(in srgb,var(--primary) 45%,transparent);
+    input:focus,select:focus{outline:2px solid color-mix(in srgb,var(--primary) 45%,transparent);
       border-color:var(--primary)}
     .actions{display:flex;gap:12px;align-items:center;margin-top:18px;flex-wrap:wrap}
     button{border:0;border-radius:20px;padding:10px 17px;font:600 14px inherit;cursor:pointer}
@@ -623,9 +780,14 @@ function render(){
     <div class="grid">
       <label>Název<input data-i="${i}" data-k="name" value="${esc(c.name)}" required></label>
       <label>IP adresa<input data-i="${i}" data-k="ip" value="${esc(c.ip)}" required></label>
-      <label>MAC adresa<input data-i="${i}" data-k="mac" value="${esc(c.mac)}" placeholder="7C:2F:80:90:2C:01" required></label>
+      <label>Typ kamery<select data-i="${i}" data-k="model">
+        <option value="gen1" ${(c.model||'gen1')==='gen1'?'selected':''}>Gen1 / GM8126</option>
+        <option value="ambarella_s2l" ${c.model==='ambarella_s2l'?'selected':''}>Novější / Ambarella S2L</option>
+      </select></label>
+      <label>MAC adresa<input data-i="${i}" data-k="mac" value="${esc(c.mac)}" placeholder="00:11:22:33:44:55" required></label>
       <label>Uživatel<input data-i="${i}" data-k="user" value="${esc(c.user||'admin')}" required></label>
       <label>Heslo<input data-i="${i}" data-k="password" type="password" value="${esc(c.password)}" placeholder="Prázdné = odvodit z MAC"></label>
+      <label>RTSP profil (novější kamera)<input data-i="${i}" data-k="stream" value="${esc(c.stream||'video0')}" placeholder="video0"></label>
       <label>Přístupový token<input data-i="${i}" data-k="token" type="password" value="${esc(c.token)}" placeholder="Doporučeno pro HTTP proxy"></label>
     </div></section>`).join('');
 }
@@ -635,7 +797,7 @@ list.addEventListener('input',e=>{const t=e.target;if(t.dataset.i!==undefined){
 }});
 list.addEventListener('click',e=>{const b=e.target.closest('[data-remove]');if(!b)return;
   const i=Number(b.dataset.remove);if(confirm(`Odstranit kameru „${cameras[i].name||i+1}“?`)){cameras.splice(i,1);render();}});
-document.getElementById('add').onclick=()=>{cameras.push({name:`Kamera ${cameras.length+1}`,ip:'',mac:'',user:'admin',password:'',token:''});render();};
+document.getElementById('add').onclick=()=>{cameras.push({name:`Kamera ${cameras.length+1}`,ip:'',mac:'',model:'gen1',stream:'video0',user:'admin',password:'',token:''});render();};
 document.getElementById('save').onclick=async()=>{status.textContent='Ukládám…';
   try{const r=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({cameras})});
     const data=await r.json();if(!r.ok)throw new Error(data.error||'Uložení selhalo');
@@ -720,6 +882,8 @@ def camera_from_mapping(value: dict) -> CameraOptions:
         name=str(
             value.get("name") or value.get("camera_name") or "Gigaset Camera"
         ).strip(),
+        model=str(value.get("model") or value.get("camera_model") or "gen1"),
+        stream=str(value.get("stream") or value.get("rtsp_stream") or "video0"),
         camera_user=str(
             value.get("user") or value.get("camera_user") or "admin"
         ).strip(),
@@ -747,6 +911,8 @@ def normalize_camera_mappings(values: object) -> list[dict[str, str]]:
                 "name": camera.name,
                 "ip": camera.camera,
                 "mac": camera.mac,
+                "model": camera.model,
+                "stream": camera.stream,
                 "user": camera.camera_user,
                 "password": str(
                     value.get("password") or value.get("camera_password") or ""
@@ -806,6 +972,8 @@ def load_camera_options(args) -> list[CameraOptions]:
                 camera=args.camera,
                 mac=args.mac,
                 name=args.name,
+                model=args.model,
+                stream=args.stream,
                 camera_user=args.camera_user,
                 camera_password=args.camera_password or "",
                 http_token=args.http_token or "",
@@ -828,6 +996,8 @@ def parse_args():
     parser.add_argument("--camera", default=env("CAMERA_IP"))
     parser.add_argument("--mac", default=env("CAMERA_MAC"))
     parser.add_argument("--name", default=env("CAMERA_NAME", "Gigaset Camera"))
+    parser.add_argument("--model", default=env("CAMERA_MODEL", "gen1"))
+    parser.add_argument("--stream", default=env("CAMERA_STREAM", "video0"))
     parser.add_argument("--camera-user", default=env("CAMERA_USER", "admin"))
     parser.add_argument("--camera-password", default=env("CAMERA_PASSWORD"))
     parser.add_argument(

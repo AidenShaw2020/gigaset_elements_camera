@@ -1,6 +1,11 @@
 # Gigaset elements camera local gateway
 
-This optional add-on connects one or more Gigaset/Y-cam Gen1 cameras to Home Assistant.
+This optional add-on connects one or more Gigaset/Y-cam cameras to Home Assistant.
+The original GM8126/Gen1 integration is hardware-validated. The newer
+S30851-H2531-R101/Ambarella S2L profile is an **experimental adapter** based on
+firmware analysis; it has not completed acceptance testing on a normally
+booting camera. See the
+[current S2L research status](../docs/cameras/s30851-h2531-r101.md).
 The camera continues to work locally when the add-on is stopped or removed.
 No cloud service is contacted.
 
@@ -25,7 +30,12 @@ mqtt_topic: gigaset/camera
 ```
 
 - In the camera editor, leave `password` empty to derive the stock password
-  locally from the MAC; enter the changed web password otherwise.
+  locally from the MAC using the selected camera type; enter the changed web
+  password otherwise.
+- Select **Gen1 / GM8126** or **Newer / Ambarella S2L** for each camera.
+- For the experimental S2L profile, `video0` is the default high-quality RTSP
+  profile. Stock firmware also defines `video1`, `video2` and `video3`, but
+  these paths still require live-camera validation.
 - `token` is a separate secret expected on that camera's motion and proxy URLs.
 - `motion_hold`: seconds for which the motion entity remains on.
 - `snapshot_interval`: seconds between JPEG snapshot updates.
@@ -36,7 +46,7 @@ The add-on obtains MQTT host, port and credentials from Home Assistant's MQTT
 service automatically. Port `8766` is exposed only so the camera can report a
 motion event.
 
-## Camera setup
+## Gen1 motion setup
 
 For each camera, copy its exact motion URL from the add-on log. Then:
 
@@ -64,5 +74,14 @@ the two URLs printed in the add-on log:
 - Still image URL: `http://HA_IP:8766/camera/CAMERA_ID/snapshot.jpg?token=TOKEN`
 - Stream source URL: `http://HA_IP:8766/camera/CAMERA_ID/stream.mjpeg?token=TOKEN`
 
-The add-on authenticates to the old camera, so Home Assistant does not need the
-camera's web password. Keep port 8766 on the trusted local network only.
+For Gen1, the stream is proxied from the camera's HTTP MJPEG endpoint. For the
+experimental S2L profile, the add-on uses FFmpeg to convert the selected local
+RTSP profile to MJPEG.
+The add-on authenticates to either camera, so Home Assistant does not need the
+camera's web/RTSP password. Keep port 8766 on the trusted local network only.
+
+S2L motion configuration is not enabled automatically. Its stock motion
+service uses the Oryx event subsystem and must be hardware-verified before the
+gateway changes it. Snapshot, refresh, availability and live RTSP proxy code
+exists, but the full S2L profile remains experimental until tested on an intact
+camera.

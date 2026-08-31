@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Gigaset elements camera setup</title>
+  <style>
+    :root { color-scheme: light dark; font: 16px/1.45 system-ui, sans-serif; }
+    body { margin: 0; background: #10151d; color: #f7f9fc; }
+    main { max-width: 30rem; margin: 8vh auto; padding: 2rem; background: #1b2430; border-radius: 1rem; box-shadow: 0 1rem 3rem #0007; }
+    h1 { font-size: 1.5rem; margin-top: 0; }
+    label { display: block; margin: 1rem 0 .35rem; }
+    input { box-sizing: border-box; width: 100%; padding: .75rem; border: 1px solid #738196; border-radius: .45rem; background: #0f1620; color: inherit; }
+    button { margin-top: 1.4rem; width: 100%; padding: .8rem; border: 0; border-radius: .5rem; background: #00a98f; color: white; font-weight: 700; cursor: pointer; }
+    small { color: #b8c3d1; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Gigaset elements camera</h1>
+    <p>Connect this camera to a 2.4 GHz Wi-Fi network.</p>
+    <form method="post" action="/cgi-bin/wifi_setup.cgi">
+      <label for="ssid">Wi-Fi name (SSID)</label>
+      <input id="ssid" name="ssid" maxlength="32" required autocomplete="off">
+      <label for="password">Wi-Fi password</label>
+      <input id="password" name="password" type="password" minlength="8" maxlength="63" autocomplete="new-password">
+      <small>Leave the password empty only for an open network.</small>
+      <button type="submit">Save and connect</button>
+    </form>
+  </main>
+</body>
+</html>
