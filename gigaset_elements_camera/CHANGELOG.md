@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0
+
+The Ambarella S2L items in this release are experimental and await acceptance
+testing on a normally booting S30851-H2531-R101 camera.
+
+- add a per-camera Gen1/Ambarella S2L model selector to the visual editor;
+- derive the newer camera's stock admin/root password locally from its MAC;
+- publish S2L snapshots and basic availability/stream telemetry;
+- proxy S2L RTSP profiles through the existing authenticated MJPEG URL using
+  FFmpeg;
+- add a source-only S2L USB service-disk installer with a 30-second setup-AP
+  fallback, captive Wi-Fi page, backups, validation and automatic rollback;
+- keep existing Gen1 camera entries compatible during upgrade.
+
 ## 0.3.0
 
 - replace the raw Home Assistant camera-list control with an authenticated

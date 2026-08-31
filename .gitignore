@@ -1,10 +1,18 @@
 # Generated payloads and camera data
 *.bin
+*.bin.json
 *.mfw
 *.mef
 *.img
 *.dump
+*.nand
+*.raw
+*.ubi
+*.ubifs
 *.tar
+*.zip
+*.ads
+*.part
 *.pcap
 *.pem
 *.key

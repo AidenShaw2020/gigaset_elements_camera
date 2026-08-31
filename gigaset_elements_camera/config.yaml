@@ -1,7 +1,7 @@
 name: Gigaset elements camera local gateway
-version: "0.3.0"
+version: "0.4.0"
 slug: gigaset_camera_mqtt
-description: Multi-camera MQTT, telemetry, snapshot and MJPEG bridge for Gigaset/Y-cam Gen1
+description: Multi-camera local gateway for Gigaset Gen1 and Ambarella S2L cameras
 arch:
   - aarch64
   - amd64

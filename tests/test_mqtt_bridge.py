@@ -6,6 +6,8 @@ from pathlib import Path
 
 from mqtt_bridge import (
     CAMERA_EDITOR_HTML,
+    CameraOptions,
+    derive_s2l_password,
     discovery_messages,
     load_camera_mappings,
     load_camera_options,
@@ -21,6 +23,23 @@ from mqtt_bridge import (
 class MqttBridgeTests(unittest.TestCase):
     def test_slugify(self):
         self.assertEqual(slugify("Hall Camera 7C:2F"), "hall_camera_7c_2f")
+
+    def test_ambarella_s2l_password_and_options(self):
+        self.assertEqual(
+            derive_s2l_password("00:E0:4C:B1:6F:13"), "LQ6PgaUWMeRJ"
+        )
+        camera = CameraOptions(
+            camera="192.0.2.20",
+            mac="00:E0:4C:B1:6F:13",
+            model="s2l",
+            stream="video1",
+        )
+        self.assertTrue(camera.is_s2l)
+        self.assertEqual(camera.camera_password, "LQ6PgaUWMeRJ")
+        self.assertEqual(
+            camera.rtsp_url,
+            "rtsp://admin:LQ6PgaUWMeRJ@192.0.2.20/video1",
+        )
 
     def test_home_assistant_discovery(self):
         messages = discovery_messages(
@@ -106,6 +125,8 @@ class MqttBridgeTests(unittest.TestCase):
                 "user": "admin",
                 "password": "",
                 "token": "local-token",
+                "model": "ambarella_s2l",
+                "stream": "video0",
             }
         ]
         with tempfile.TemporaryDirectory() as folder:
@@ -115,7 +136,9 @@ class MqttBridgeTests(unittest.TestCase):
         self.assertEqual(stored, loaded)
         self.assertEqual(loaded[0]["mac"], "02:00:00:00:00:01")
         self.assertEqual(loaded[0]["password"], "")
+        self.assertEqual(loaded[0]["model"], "ambarella_s2l")
         self.assertIn("Přidat kameru", CAMERA_EDITOR_HTML)
+        self.assertIn("Novější / Ambarella S2L", CAMERA_EDITOR_HTML)
 
     def test_visual_editor_rejects_duplicate_camera_ids(self):
         values = [
